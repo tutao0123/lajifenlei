@@ -1,18 +1,18 @@
-from transformers import ViTImageProcessor, ViTForImageClassification, pipeline
-from PIL import Image
-import requests
+from transformers import AutoImageProcessor, ResNetForImageClassification
+import torch
+from datasets import load_dataset
 
-url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
-image = Image.open(requests.get(url, stream=True).raw)
+dataset = load_dataset("huggingface/cats-image", trust_remote_code=True)
+image = dataset["test"]["image"][0]
 
-processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224')
-pipe = pipeline("image-classification", model="microsoft/resnet-50")
-model = ViTForImageClassification.from_pretrained('google/vit-base-patch16-224')
+processor = AutoImageProcessor.from_pretrained("microsoft/resnet-50")
+model = ResNetForImageClassification.from_pretrained("microsoft/resnet-50")
 
-inputs = processor(images=image, return_tensors="pt")
-outputs = model(**inputs)
-logits = outputs.logits
+inputs = processor(image, return_tensors="pt")
+
+with torch.no_grad():
+    logits = model(**inputs).logits
+
 # model predicts one of the 1000 ImageNet classes
-predicted_class_idx = logits.argmax(-1).item()
-print("Predicted class:", model.config.id2label[predicted_class_idx])
-
+predicted_label = logits.argmax(-1).item()
+print(model.config.id2label[predicted_label])
